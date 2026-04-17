@@ -1,0 +1,173 @@
+/* ── Stylus Plugin Styles ─────────────────────────────────────────────────── */
+
+/* Embed wrapper — remove Obsidian's default embed styling */
+.stylus-embed {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	padding: 0;
+	margin: 0.5em 0;
+}
+
+.stylus-canvas-wrapper {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	overflow: hidden;
+	background: var(--background-primary);
+	outline: none;
+}
+
+.stylus-canvas-wrapper:focus-within {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.stylus-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px;
+	padding: 4px 6px;
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	user-select: none;
+}
+
+.stylus-toolbar-group {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.stylus-toolbar-sep {
+	width: 1px;
+	height: 20px;
+	margin: 0 4px;
+	background: var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.stylus-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.stylus-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.stylus-btn.stylus-btn-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.stylus-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* ── Color Buttons ───────────────────────────────────────────────────────── */
+
+.stylus-color-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 2px solid transparent;
+	border-radius: 50%;
+	background: transparent;
+	cursor: pointer;
+	transition: border-color 0.1s, transform 0.1s;
+}
+
+.stylus-color-btn:hover {
+	transform: scale(1.15);
+}
+
+.stylus-color-btn.stylus-btn-active {
+	border-color: var(--text-normal);
+}
+
+.stylus-color-swatch {
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--swatch-color);
+}
+
+/* ── Width Buttons ───────────────────────────────────────────────────────── */
+
+.stylus-width-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: transparent;
+	cursor: pointer;
+	transition: background 0.1s, border-color 0.1s;
+}
+
+.stylus-width-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.stylus-width-btn.stylus-btn-active {
+	background: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+
+.stylus-width-indicator {
+	width: 16px;
+	min-height: 1px;
+	background: var(--text-muted);
+	border-radius: 2px;
+	transition: background 0.1s;
+}
+
+.stylus-width-btn.stylus-btn-active .stylus-width-indicator {
+	background: var(--text-on-accent);
+}
+
+/* ── SVG Container ───────────────────────────────────────────────────────── */
+
+.stylus-svg-container {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	background: white;
+	overflow: auto;
+}
+
+.stylus-svg {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	cursor: default;
+}
+
+/* Ensure drawn paths look good */
+.stylus-svg g[data-stylus="strokes"] path {
+	pointer-events: stroke;
+}

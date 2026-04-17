@@ -1,0 +1,9 @@
+{
+	"id": "obsidian-stylus",
+	"name": "Stylus",
+	"version": "0.1.0",
+	"minAppVersion": "1.4.0",
+	"description": "Inline SVG viewer and freehand drawing tool for handwritten notes.",
+	"author": "obsidian-stylus",
+	"isDesktopOnly": false
+}

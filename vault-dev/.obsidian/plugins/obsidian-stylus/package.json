@@ -1,0 +1,17 @@
+{
+	"name": "obsidian-stylus",
+	"version": "0.1.0",
+	"description": "Inline SVG viewer and freehand drawing tool for Obsidian",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "node esbuild.config.mjs production"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.0",
+		"esbuild": "^0.20.0",
+		"obsidian": "latest",
+		"typescript": "^5.3.0",
+		"tslib": "^2.6.0"
+	}
+}
