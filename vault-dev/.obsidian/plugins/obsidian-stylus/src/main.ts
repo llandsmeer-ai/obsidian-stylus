@@ -3,7 +3,6 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
-	MarkdownPostProcessorContext,
 	TFile,
 	Modal,
 	Notice,
@@ -811,55 +810,30 @@ class StylusSettingTab extends PluginSettingTab {
 
 export default class StylusPlugin extends Plugin {
 	settings: StylusSettings = DEFAULT_SETTINGS;
-	private canvases: StylusCanvas[] = [];
+	private canvases: Map<HTMLElement, StylusCanvas> = new Map();
+	private observer: MutationObserver | null = null;
 
 	async onload() {
 		await this.loadSettings();
 
-		// ── Post processor: intercept ![[file.svg|stylus]] ──
-		this.registerMarkdownPostProcessor(async (el, ctx) => {
-			const embeds = el.querySelectorAll(".internal-embed");
-
-			for (const embed of Array.from(embeds)) {
-				const src = embed.getAttribute("src");
-				if (!src) continue;
-
-				// Check if this is an SVG with the |stylus alt text
-				const alt = embed.getAttribute("alt");
-				if (!src.toLowerCase().endsWith(".svg") || alt !== "stylus") continue;
-
-				// Resolve the file
-				const file = this.app.metadataCache.getFirstLinkpathDest(
-					src,
-					ctx.sourcePath
-				);
-				if (!file || !(file instanceof TFile)) continue;
-
-				// Read SVG content
-				let svgContent = await this.app.vault.read(file);
-				svgContent = ensureStylusGroup(svgContent);
-
-				// Replace the embed content with our canvas
-				const wrapper = createDiv();
-				embed.replaceChildren(wrapper);
-				embed.addClass("stylus-embed");
-				// Remove default embed sizing
-				embed.removeAttribute("width");
-				embed.removeAttribute("height");
-
-				const canvas = new StylusCanvas(
-					this.app,
-					file,
-					this.settings,
-					wrapper,
-					svgContent
-				);
-				this.canvases.push(canvas);
-
-				// Clean up when the embed is removed from DOM
-				this.register(() => canvas.destroy());
+		// ── DOM observer: intercept .internal-embed[alt="stylus"] in any view ──
+		this.observer = new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				for (const node of Array.from(mutation.addedNodes)) {
+					if (node instanceof HTMLElement) {
+						this.processEmbedsIn(node);
+					}
+				}
 			}
 		});
+		this.observer.observe(document.body, { childList: true, subtree: true });
+		this.register(() => this.observer?.disconnect());
+
+		// Process embeds already in the DOM and on layout changes
+		this.app.workspace.onLayoutReady(() => this.processAllEmbeds());
+		this.registerEvent(
+			this.app.workspace.on("layout-change", () => this.processAllEmbeds())
+		);
 
 		// ── Command: Create new SVG ──
 		this.addCommand({
@@ -901,10 +875,79 @@ export default class StylusPlugin extends Plugin {
 	}
 
 	onunload() {
-		for (const c of this.canvases) {
-			c.destroy();
+		this.observer?.disconnect();
+		for (const canvas of this.canvases.values()) {
+			canvas.destroy();
 		}
-		this.canvases = [];
+		this.canvases.clear();
+	}
+
+	// ── Embed processing ─────────────────────────────────────────────────────
+
+	private processAllEmbeds() {
+		const embeds = document.querySelectorAll(
+			'.internal-embed[alt="stylus"]'
+		);
+		for (const embed of Array.from(embeds)) {
+			this.processEmbed(embed as HTMLElement);
+		}
+	}
+
+	private processEmbedsIn(el: HTMLElement) {
+		// Check the element itself
+		if (
+			el.matches?.('.internal-embed[alt="stylus"]')
+		) {
+			this.processEmbed(el);
+		}
+		// Check descendants
+		const embeds = el.querySelectorAll?.(
+			'.internal-embed[alt="stylus"]'
+		);
+		if (embeds) {
+			for (const embed of Array.from(embeds)) {
+				this.processEmbed(embed as HTMLElement);
+			}
+		}
+	}
+
+	private async processEmbed(embed: HTMLElement) {
+		// Skip if already processed and canvas is still alive
+		if (this.canvases.has(embed)) return;
+
+		const src = embed.getAttribute("src");
+		if (!src || !src.toLowerCase().endsWith(".svg")) return;
+
+		// Resolve the file — try vault-wide first, then relative to active file
+		let file = this.app.metadataCache.getFirstLinkpathDest(src, "");
+		if (!file) {
+			const activeFile = this.app.workspace.getActiveFile();
+			if (activeFile) {
+				file = this.app.metadataCache.getFirstLinkpathDest(
+					src,
+					activeFile.path
+				);
+			}
+		}
+		if (!file || !(file instanceof TFile)) return;
+
+		// Read SVG content
+		let svgContent = await this.app.vault.read(file);
+		svgContent = ensureStylusGroup(svgContent);
+
+		// Replace the embed content with our canvas
+		const wrapper = createDiv();
+		embed.replaceChildren(wrapper);
+		embed.addClass("stylus-embed");
+
+		const canvas = new StylusCanvas(
+			this.app,
+			file,
+			this.settings,
+			wrapper,
+			svgContent
+		);
+		this.canvases.set(embed, canvas);
 	}
 
 	async loadSettings() {
