@@ -317,6 +317,8 @@ class StylusCanvas {
 		this.undoStack = [];
 		this.redoStack = [];
 
+		this.updateHasContent();
+
 		// Keyboard shortcuts on the wrapper
 		this.container.setAttribute("tabindex", "0");
 		this.container.addEventListener("keydown", this.onKeyDown);
@@ -770,7 +772,13 @@ class StylusCanvas {
 
 	// ── Persistence ──────────────────────────────────────────────────────────
 
+	private updateHasContent() {
+		const hasContent = (this.strokesGroup?.children.length ?? 0) > 0;
+		this.container.toggleClass("stylus-has-content", hasContent);
+	}
+
 	private scheduleSave() {
+		this.updateHasContent();
 		if (this.saveTimeout) clearTimeout(this.saveTimeout);
 		this.saveTimeout = setTimeout(() => this.save(), 2000);
 	}

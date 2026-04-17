@@ -17,6 +17,11 @@
 	outline: none;
 }
 
+.stylus-canvas-wrapper.stylus-has-content:not(.stylus-active) {
+	border-color: transparent;
+	background: transparent;
+}
+
 .stylus-canvas-wrapper:focus-within {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 1px var(--interactive-accent);
