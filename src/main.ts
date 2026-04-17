@@ -505,12 +505,13 @@ class StylusCanvas {
 		if (e.button !== 0) return;
 
 		e.preventDefault();
-		this.svgEl.setPointerCapture(e.pointerId);
 
 		if (this.currentTool === "eraser") {
 			this.eraseAtPoint(e);
 			return;
 		}
+
+		this.svgEl.setPointerCapture(e.pointerId);
 
 		// Start pen stroke
 		this.isDrawing = true;
@@ -597,8 +598,8 @@ class StylusCanvas {
 	private eraseAtPoint(e: PointerEvent) {
 		if (!this.svgEl || !this.strokesGroup) return;
 
-		const target = e.target as Element;
-		// Check if the target is a stroke path inside our group
+		const target = document.elementFromPoint(e.clientX, e.clientY);
+		// Check if the element under the pointer is a stroke path inside our group
 		if (
 			target instanceof SVGPathElement &&
 			target.closest('g[data-stylus="strokes"]') === this.strokesGroup
