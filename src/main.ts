@@ -482,6 +482,22 @@ class StylusCanvas {
 		});
 		extendBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>`;
 		extendBtn.addEventListener("click", () => this.extendHeight());
+
+		// ── Extend top ──
+		const extendTopBtn = resizeGroup.createEl("button", {
+			cls: "stylus-btn",
+			attr: { "aria-label": `Extend top +${this.settings.heightIncrement}px` },
+		});
+		extendTopBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>`;
+		extendTopBtn.addEventListener("click", () => this.extendTop());
+
+		// ── Fit to content ──
+		const fitBtn = resizeGroup.createEl("button", {
+			cls: "stylus-btn",
+			attr: { "aria-label": "Fit canvas to content" },
+		});
+		fitBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V9"/><path d="M3 15V9"/><path d="m15 3-3 3-3-3"/><path d="m15 21-3-3-3 3"/><rect x="3" y="9" width="18" height="6" rx="1"/></svg>`;
+		fitBtn.addEventListener("click", () => this.fitToContent());
 	}
 
 	// ── Tool switching ───────────────────────────────────────────────────────
@@ -765,6 +781,74 @@ class StylusCanvas {
 		const curH = vb.height || parseInt(this.svgEl.getAttribute("height") || "600");
 		const newH = curH + this.settings.heightIncrement;
 
+		this.svgEl.setAttribute("height", String(newH));
+		this.svgEl.setAttribute("viewBox", `0 0 ${curW} ${newH}`);
+		this.scheduleSave();
+	}
+
+	private extendTop() {
+		if (!this.svgEl || !this.strokesGroup) return;
+		const vb = this.svgEl.viewBox.baseVal;
+		const curW = vb.width || parseInt(this.svgEl.getAttribute("width") || "800");
+		const curH = vb.height || parseInt(this.svgEl.getAttribute("height") || "600");
+		const inc = this.settings.heightIncrement;
+		const newH = curH + inc;
+
+		// Shift all strokes down by the increment
+		const paths = this.strokesGroup.querySelectorAll("path");
+		for (const path of Array.from(paths)) {
+			const transform = path.getAttribute("transform") || "";
+			// Parse existing translate if any
+			const match = transform.match(/translate\(\s*([\d.eE+-]+)\s*,\s*([\d.eE+-]+)\s*\)/);
+			if (match) {
+				const tx = parseFloat(match[1]);
+				const ty = parseFloat(match[2]) + inc;
+				path.setAttribute("transform", transform.replace(/translate\([^)]+\)/, `translate(${tx}, ${ty})`));
+			} else {
+				path.setAttribute("transform", `translate(0, ${inc})` + (transform ? ` ${transform}` : ""));
+			}
+		}
+
+		this.svgEl.setAttribute("height", String(newH));
+		this.svgEl.setAttribute("viewBox", `0 0 ${curW} ${newH}`);
+		this.scheduleSave();
+	}
+
+	private fitToContent() {
+		if (!this.svgEl || !this.strokesGroup) return;
+		if (this.strokesGroup.children.length === 0) return;
+
+		// Get the bounding box of all strokes
+		const bbox = this.strokesGroup.getBBox();
+		if (bbox.width === 0 && bbox.height === 0) return;
+
+		const padding = 4; // small padding so strokes don't touch the edge
+		const vb = this.svgEl.viewBox.baseVal;
+		const curW = vb.width || parseInt(this.svgEl.getAttribute("width") || "800");
+
+		// Shift all strokes up/left to remove top/left margin
+		const offsetX = 0; // keep horizontal position — only trim vertically
+		const offsetY = bbox.y - padding;
+
+		if (Math.abs(offsetY) > 0.5) {
+			const paths = this.strokesGroup.querySelectorAll("path");
+			for (const path of Array.from(paths)) {
+				const transform = path.getAttribute("transform") || "";
+				const match = transform.match(/translate\(\s*([\d.eE+-]+)\s*,\s*([\d.eE+-]+)\s*\)/);
+				if (match) {
+					const tx = parseFloat(match[1]);
+					const ty = parseFloat(match[2]) - offsetY;
+					path.setAttribute("transform", transform.replace(/translate\([^)]+\)/, `translate(${tx}, ${ty})`));
+				} else {
+					path.setAttribute("transform", `translate(0, ${-offsetY})` + (transform ? ` ${transform}` : ""));
+				}
+			}
+		}
+
+		// New height = content height + padding on both sides
+		const newH = Math.ceil(bbox.height + padding * 2);
+
+		this.svgEl.setAttribute("width", String(curW));
 		this.svgEl.setAttribute("height", String(newH));
 		this.svgEl.setAttribute("viewBox", `0 0 ${curW} ${newH}`);
 		this.scheduleSave();
