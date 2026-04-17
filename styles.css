@@ -160,6 +160,10 @@
 	overflow: auto;
 }
 
+.stylus-svg-container.stylus-transparent-bg {
+	background: transparent;
+}
+
 .stylus-svg {
 	display: block;
 	max-width: 100%;

@@ -21,6 +21,8 @@ interface StylusSettings {
 	smoothing: number; // 0 = none, 0.3 = low, 0.5 = medium, 0.8 = high
 	savePath: string;
 	barrelButtonAction: "cycle-color" | "toggle-tool" | "undo";
+	heightIncrement: number;
+	transparentBackground: boolean;
 }
 
 const DEFAULT_SETTINGS: StylusSettings = {
@@ -31,6 +33,8 @@ const DEFAULT_SETTINGS: StylusSettings = {
 	smoothing: 0.5,
 	savePath: "stylus",
 	barrelButtonAction: "cycle-color",
+	heightIncrement: 25,
+	transparentBackground: false,
 };
 
 const PEN_COLORS = [
@@ -166,10 +170,14 @@ class ResizeModal extends Modal {
 
 class CreateSvgModal extends Modal {
 	filename: string = "drawing";
-	onSubmit: (name: string) => void;
+	width: number;
+	height: number;
+	onSubmit: (name: string, w: number, h: number) => void;
 
-	constructor(app: App, onSubmit: (name: string) => void) {
+	constructor(app: App, settings: StylusSettings, onSubmit: (name: string, w: number, h: number) => void) {
 		super(app);
+		this.width = settings.defaultWidth;
+		this.height = settings.defaultHeight;
 		this.onSubmit = onSubmit;
 	}
 
@@ -185,9 +193,19 @@ class CreateSvgModal extends Modal {
 					this.filename = v.trim() || "drawing";
 				})
 		);
+		new Setting(contentEl).setName("Width (px)").addText((text) =>
+			text.setValue(String(this.width)).onChange((v) => {
+				this.width = parseInt(v, 10) || this.width;
+			})
+		);
+		new Setting(contentEl).setName("Height (px)").addText((text) =>
+			text.setValue(String(this.height)).onChange((v) => {
+				this.height = parseInt(v, 10) || this.height;
+			})
+		);
 		new Setting(contentEl).addButton((btn) =>
 			btn.setButtonText("Create").setCta().onClick(() => {
-				this.onSubmit(this.filename);
+				this.onSubmit(this.filename, this.width, this.height);
 				this.close();
 			})
 		);
@@ -255,6 +273,9 @@ class StylusCanvas {
 
 		// ── SVG container ──
 		const svgContainer = this.container.createDiv({ cls: "stylus-svg-container" });
+		if (this.settings.transparentBackground) {
+			svgContainer.addClass("stylus-transparent-bg");
+		}
 
 		// Parse the SVG content
 		const parser = new DOMParser();
@@ -385,6 +406,14 @@ class StylusCanvas {
 		});
 		resizeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>`;
 		resizeBtn.addEventListener("click", () => this.openResize());
+
+		// ── Extend height ──
+		const extendBtn = resizeGroup.createEl("button", {
+			cls: "stylus-btn",
+			attr: { "aria-label": `Extend height +${this.settings.heightIncrement}px` },
+		});
+		extendBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>`;
+		extendBtn.addEventListener("click", () => this.extendHeight());
 	}
 
 	// ── Tool switching ───────────────────────────────────────────────────────
@@ -660,6 +689,18 @@ class StylusCanvas {
 		}).open();
 	}
 
+	private extendHeight() {
+		if (!this.svgEl) return;
+		const vb = this.svgEl.viewBox.baseVal;
+		const curW = vb.width || parseInt(this.svgEl.getAttribute("width") || "800");
+		const curH = vb.height || parseInt(this.svgEl.getAttribute("height") || "600");
+		const newH = curH + this.settings.heightIncrement;
+
+		this.svgEl.setAttribute("height", String(newH));
+		this.svgEl.setAttribute("viewBox", `0 0 ${curW} ${newH}`);
+		this.scheduleSave();
+	}
+
 	// ── Persistence ──────────────────────────────────────────────────────────
 
 	private scheduleSave() {
@@ -803,6 +844,26 @@ class StylusSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				});
 			});
+
+		new Setting(containerEl)
+			.setName("Height increment")
+			.setDesc("Pixels added when pressing the extend-height toolbar button")
+			.addText((text) =>
+				text.setValue(String(this.plugin.settings.heightIncrement)).onChange(async (v) => {
+					this.plugin.settings.heightIncrement = parseInt(v, 10) || 25;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Transparent background")
+			.setDesc("Use Obsidian's background color instead of white")
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.transparentBackground).onChange(async (v) => {
+					this.plugin.settings.transparentBackground = v;
+					await this.plugin.saveSettings();
+				})
+			);
 	}
 }
 
@@ -840,8 +901,8 @@ export default class StylusPlugin extends Plugin {
 			id: "create-svg",
 			name: "Create new SVG drawing",
 			callback: () => {
-				new CreateSvgModal(this.app, async (filename) => {
-					await this.createSvgFile(filename);
+				new CreateSvgModal(this.app, this.settings, async (filename, w, h) => {
+					await this.createSvgFile(filename, w, h);
 				}).open();
 			},
 		});
@@ -857,8 +918,8 @@ export default class StylusPlugin extends Plugin {
 
 		// ── Ribbon icon ──
 		this.addRibbonIcon("pencil", "New stylus drawing", () => {
-			new CreateSvgModal(this.app, async (filename) => {
-				await this.createSvgFile(filename);
+			new CreateSvgModal(this.app, this.settings, async (filename, w, h) => {
+				await this.createSvgFile(filename, w, h);
 			}).open();
 		});
 
@@ -966,7 +1027,7 @@ export default class StylusPlugin extends Plugin {
 		return folder;
 	}
 
-	private async createSvgFile(filename: string) {
+	private async createSvgFile(filename: string, width: number, height: number) {
 		try {
 			const folder = await this.ensureSavePath();
 			const safeName = filename.replace(/\.svg$/i, "");
@@ -979,7 +1040,7 @@ export default class StylusPlugin extends Plugin {
 				counter++;
 			}
 
-			const content = blankSvg(this.settings.defaultWidth, this.settings.defaultHeight);
+			const content = blankSvg(width, height);
 			await this.app.vault.create(path, content);
 
 			// Insert embed at cursor in active editor
