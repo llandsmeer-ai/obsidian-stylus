@@ -4,6 +4,10 @@ Take handwritten notes with your stylus directly inside the regular Obsidian mar
 
 Stylus embeds drawing canvases inline as SVGs using `![[file.svg|stylus]]`. Click to draw, click away to continue typing. Your handwriting lives alongside your markdown.
 
+### Example 1
+![Stylus plugin in action](screenshot2.png)
+
+### Example 2
 ![Stylus plugin in action](screenshot.png)
 
 ## Usage
