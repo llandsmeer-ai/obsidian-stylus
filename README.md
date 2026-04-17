@@ -2,6 +2,8 @@
 
 Freehand drawing directly inside your Obsidian notes. Embed an SVG with the `|stylus` alias and get an interactive pen canvas inline — no popups, no separate windows.
 
+![Stylus plugin in action](screenshot.png)
+
 ## Usage
 
 1. Create a drawing: run the **Stylus: Create new SVG** command (Ctrl/Cmd+P → "Stylus: Create")
