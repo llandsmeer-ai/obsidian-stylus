@@ -169,13 +169,14 @@ class ResizeModal extends Modal {
 // ─── Create SVG Modal (filename prompt) ──────────────────────────────────────
 
 class CreateSvgModal extends Modal {
-	filename: string = "drawing";
+	filename: string;
 	width: number;
 	height: number;
 	onSubmit: (name: string, w: number, h: number) => void;
 
-	constructor(app: App, settings: StylusSettings, onSubmit: (name: string, w: number, h: number) => void) {
+	constructor(app: App, settings: StylusSettings, defaultFilename: string, onSubmit: (name: string, w: number, h: number) => void) {
 		super(app);
+		this.filename = defaultFilename;
 		this.width = settings.defaultWidth;
 		this.height = settings.defaultHeight;
 		this.onSubmit = onSubmit;
@@ -190,7 +191,7 @@ class CreateSvgModal extends Modal {
 				.setPlaceholder("drawing")
 				.setValue(this.filename)
 				.onChange((v) => {
-					this.filename = v.trim() || "drawing";
+					this.filename = v.trim() || this.filename;
 				})
 		);
 		new Setting(contentEl).setName("Width (px)").addText((text) =>
@@ -962,8 +963,9 @@ export default class StylusPlugin extends Plugin {
 		this.addCommand({
 			id: "create-svg",
 			name: "Create new SVG drawing",
-			callback: () => {
-				new CreateSvgModal(this.app, this.settings, async (filename, w, h) => {
+			callback: async () => {
+				const defaultName = await this.nextDefaultFilename();
+				new CreateSvgModal(this.app, this.settings, defaultName, async (filename, w, h) => {
 					await this.createSvgFile(filename, w, h);
 				}).open();
 			},
@@ -979,8 +981,9 @@ export default class StylusPlugin extends Plugin {
 		});
 
 		// ── Ribbon icon ──
-		this.addRibbonIcon("pencil", "New stylus drawing", () => {
-			new CreateSvgModal(this.app, this.settings, async (filename, w, h) => {
+		this.addRibbonIcon("pencil", "New stylus drawing", async () => {
+			const defaultName = await this.nextDefaultFilename();
+			new CreateSvgModal(this.app, this.settings, defaultName, async (filename, w, h) => {
 				await this.createSvgFile(filename, w, h);
 			}).open();
 		});
@@ -1087,6 +1090,19 @@ export default class StylusPlugin extends Plugin {
 			await this.app.vault.createFolder(folder);
 		}
 		return folder;
+	}
+
+	private async nextDefaultFilename(): Promise<string> {
+		const folder = normalizePath(this.settings.savePath);
+		const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+		const base = `${date}-drawing`;
+		let name = base;
+		let counter = 1;
+		while (await this.app.vault.adapter.exists(normalizePath(`${folder}/${name}.svg`))) {
+			name = `${base}-${counter}`;
+			counter++;
+		}
+		return name;
 	}
 
 	private async createSvgFile(filename: string, width: number, height: number) {

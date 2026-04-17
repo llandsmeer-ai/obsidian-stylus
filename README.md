@@ -1,6 +1,8 @@
-# Stylus — Inline SVG Drawing for Obsidian
+# Stylus — Handwritten Notes in Obsidian
 
-Freehand drawing directly inside your Obsidian notes. Embed an SVG with the `|stylus` alias and get an interactive pen canvas inline — no popups, no separate windows.
+Take handwritten notes with your stylus directly inside the regular Obsidian markdown editor. No separate canvas app, no special view mode — just write between your text, headings, and bullet points like pen on paper.
+
+Stylus embeds drawing canvases inline as SVGs using `![[file.svg|stylus]]`. Click to draw, click away to continue typing. Your handwriting lives alongside your markdown.
 
 ![Stylus plugin in action](screenshot.png)
 
