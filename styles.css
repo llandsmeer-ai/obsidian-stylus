@@ -35,6 +35,10 @@
 	user-select: none;
 }
 
+.stylus-toolbar.stylus-toolbar-hidden {
+	display: none;
+}
+
 .stylus-toolbar-group {
 	display: flex;
 	align-items: center;

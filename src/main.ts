@@ -234,6 +234,11 @@ class StylusCanvas {
 	private currentPoints: Point[] = [];
 	private currentPath: SVGPathElement | null = null;
 
+	// Active state — inactive by default (view-only, no toolbar)
+	private active = false;
+	private toolbarEl: HTMLElement | null = null;
+	private onClickOutside: ((e: MouseEvent) => void) | null = null;
+
 	// Undo/redo stacks store SVG path element outerHTML
 	private undoStack: string[] = [];
 	private redoStack: string[] = [];
@@ -267,9 +272,10 @@ class StylusCanvas {
 		this.container.empty();
 		this.container.addClass("stylus-canvas-wrapper");
 
-		// ── Toolbar ──
-		const toolbar = this.container.createDiv({ cls: "stylus-toolbar" });
+		// ── Toolbar (hidden by default) ──
+		const toolbar = this.container.createDiv({ cls: "stylus-toolbar stylus-toolbar-hidden" });
 		this.buildToolbar(toolbar);
+		this.toolbarEl = toolbar;
 
 		// ── SVG container ──
 		const svgContainer = this.container.createDiv({ cls: "stylus-svg-container" });
@@ -310,18 +316,77 @@ class StylusCanvas {
 		this.undoStack = [];
 		this.redoStack = [];
 
-		// Pointer events
-		liveSvg.addEventListener("pointerdown", this.onPointerDown);
-		liveSvg.addEventListener("pointermove", this.onPointerMove);
-		liveSvg.addEventListener("pointerup", this.onPointerUp);
-		liveSvg.addEventListener("pointerleave", this.onPointerUp);
-
-		// Prevent default touch actions for drawing
-		liveSvg.style.touchAction = "none";
-
 		// Keyboard shortcuts on the wrapper
 		this.container.setAttribute("tabindex", "0");
 		this.container.addEventListener("keydown", this.onKeyDown);
+
+		// Click to activate
+		this.container.addEventListener("pointerdown", this.onActivateClick);
+	}
+
+	// ── Activate / Deactivate ───────────────────────────────────────────────
+
+	private onActivateClick = (e: PointerEvent) => {
+		if (this.active) return;
+		e.stopPropagation();
+		this.activate();
+	};
+
+	private activate() {
+		if (this.active || !this.svgEl) return;
+		this.active = true;
+
+		this.container.addClass("stylus-active");
+		this.toolbarEl?.removeClass("stylus-toolbar-hidden");
+
+		// Attach drawing events
+		this.svgEl.addEventListener("pointerdown", this.onPointerDown);
+		this.svgEl.addEventListener("pointermove", this.onPointerMove);
+		this.svgEl.addEventListener("pointerup", this.onPointerUp);
+		this.svgEl.addEventListener("pointerleave", this.onPointerUp);
+		this.svgEl.style.touchAction = "none";
+
+		// Listen for clicks outside to deactivate
+		this.onClickOutside = (e: MouseEvent) => {
+			if (!this.container.contains(e.target as Node)) {
+				this.deactivate();
+			}
+		};
+		// Use setTimeout so the current click doesn't immediately deactivate
+		setTimeout(() => {
+			document.addEventListener("pointerdown", this.onClickOutside as EventListener, true);
+		}, 0);
+	}
+
+	private deactivate() {
+		if (!this.active || !this.svgEl) return;
+		this.active = false;
+
+		this.container.removeClass("stylus-active");
+		this.toolbarEl?.addClass("stylus-toolbar-hidden");
+
+		// Remove drawing events
+		this.svgEl.removeEventListener("pointerdown", this.onPointerDown);
+		this.svgEl.removeEventListener("pointermove", this.onPointerMove);
+		this.svgEl.removeEventListener("pointerup", this.onPointerUp);
+		this.svgEl.removeEventListener("pointerleave", this.onPointerUp);
+		this.svgEl.style.touchAction = "";
+
+		// Finish any in-progress stroke
+		if (this.isDrawing && this.currentPath) {
+			this.isDrawing = false;
+			this.currentPath = null;
+			this.currentPoints = [];
+		}
+
+		// Remove outside listener
+		if (this.onClickOutside) {
+			document.removeEventListener("pointerdown", this.onClickOutside as EventListener, true);
+			this.onClickOutside = null;
+		}
+
+		// Save on deactivate
+		this.scheduleSave();
 	}
 
 	private buildToolbar(toolbar: HTMLElement) {
@@ -734,12 +799,8 @@ class StylusCanvas {
 			// Force a final save
 			this.save();
 		}
-		if (this.svgEl) {
-			this.svgEl.removeEventListener("pointerdown", this.onPointerDown);
-			this.svgEl.removeEventListener("pointermove", this.onPointerMove);
-			this.svgEl.removeEventListener("pointerup", this.onPointerUp);
-			this.svgEl.removeEventListener("pointerleave", this.onPointerUp);
-		}
+		this.deactivate();
+		this.container.removeEventListener("pointerdown", this.onActivateClick);
 		this.container.removeEventListener("keydown", this.onKeyDown);
 	}
 }
