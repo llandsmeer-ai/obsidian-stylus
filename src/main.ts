@@ -581,6 +581,8 @@ class StylusCanvas {
 		// Eraser tip (button 5 / buttons 32)
 		const isEraserTip = e.button === 5 || (e.buttons & 32) !== 0;
 		if (isEraserTip) {
+			e.preventDefault();
+			e.stopPropagation();
 			this.eraseAtPoint(e);
 			return;
 		}
@@ -589,6 +591,7 @@ class StylusCanvas {
 		if (e.button !== 0) return;
 
 		e.preventDefault();
+		e.stopPropagation();
 
 		if (this.currentTool === "eraser") {
 			this.eraseAtPoint(e);
@@ -617,6 +620,9 @@ class StylusCanvas {
 	private onPointerMove = (e: PointerEvent) => {
 		if (!this.svgEl) return;
 
+		e.preventDefault();
+		e.stopPropagation();
+
 		// Handle ongoing eraser tip — always erases regardless of current tool
 		const isEraserTip = (e.buttons & 32) !== 0;
 		if (isEraserTip) {
@@ -631,7 +637,6 @@ class StylusCanvas {
 
 		if (!this.isDrawing || !this.currentPath) return;
 
-		e.preventDefault();
 		const pt = this.getSvgPoint(e);
 		this.currentPoints.push(pt);
 
@@ -641,6 +646,9 @@ class StylusCanvas {
 	};
 
 	private onPointerUp = (e: PointerEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+
 		if (!this.isDrawing || !this.currentPath) {
 			this.isDrawing = false;
 			return;
