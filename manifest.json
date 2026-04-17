@@ -4,6 +4,8 @@
 	"version": "0.1.0",
 	"minAppVersion": "1.4.0",
 	"description": "Inline SVG viewer and freehand drawing tool for handwritten notes.",
-	"author": "obsidian-stylus",
+	"author": "llandsmeer-ai",
+	"authorUrl": "https://github.com/llandsmeer-ai",
+	"fundingUrl": "",
 	"isDesktopOnly": false
 }
